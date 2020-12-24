@@ -96,4 +96,8 @@ def tree_error(k,x_train,y_train,x_val, y_val):
     print("Max Depth Tree- Validation accuracy: ", round(accuracy_score(y_val, preds_DT), 3))
     print()
 
+
+# main
+
 build_tree(0.2)
+#tree_error()
