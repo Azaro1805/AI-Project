@@ -1,3 +1,5 @@
+import copy
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -24,6 +26,21 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 
 np.random.seed(356)
+class leaf:
+    def __init__(self, name, value, data, Entropy, samples, before):
+        self.name = name
+        self.value = value
+        self.data = data
+        self.Entropy = Entropy
+        self.samples = samples
+        self.before = before
+
+class parx:
+    def __init__(self, name, name_num, data, Entropy):
+        self.name = name
+        self.data = data
+        self.Entropy = Entropy
+        self.name_num =name_num
 
 
 def change_DB_buckets(col, number_of_splits, bucketSize, startpoint):
@@ -41,7 +58,7 @@ def change_DB_buckets(col, number_of_splits, bucketSize, startpoint):
 
 clients_data = pd.read_csv("DefaultOfCreditCardClients.csv")
 clients_data = clients_data.drop(0)  # מוריד שורה ראשונה
-
+decision_Tree = list()
 # print(clients_data)
 
 ###-------------------- Edit paramters in data-set --------------------------###
@@ -71,34 +88,29 @@ change_DB_buckets('X23', 4, 132167, 0)
 # data of number of options in each Xi
 
 # first 0 is for X0 = null
-number_of_X_op = [0, 4, 3, 4, 4, 4, 11, 11, 11, 11, 11, 11, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
-
+number_of_X_op = [0, 4, 3, 4, 4, 4, 11, 11, 11, 11, 10, 10, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
 
 # print(clients_data)
-
 
 ###---------------------------- Validation set & Train set & Tree -----לערוך כותרות------------------------###
 
 # יש בעיה בתוכן יש 2 שורות כותרות יעשה בעיות בהמשך
-class Node:
-    def __init__(self, name, dataM, dataE, sampels, before):
-        self.name = name
-        self.dataM = dataM
-        self.dataE = dataE
-        self.sampels = sampels
-        self.before = before
 
 # Get all possible options of specific X
 def get_option(col_num):
     if (col_num == 2):
         number_of_op = [1, 2]
         return number_of_op
-    if (col_num == 6 or col_num == 7 or col_num == 8 or col_num == 9 or col_num == 10 or col_num == 11):
+    if (col_num == 6 or col_num == 7 or col_num == 8 or col_num == 9):
         number_of_op = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8]
+        return number_of_op
+    if(col_num == 10 or col_num == 11):
+        number_of_op = [-2, -1, 0, 2, 3, 4, 5, 6, 7, 8]
         return number_of_op
     else:
         number_of_op = [0, 1, 2, 3]
         return number_of_op
+
 
 # Get entropy of specific X
 def get_one_entropy(col, col_num, data):
@@ -141,37 +153,69 @@ def get_one_entropy(col, col_num, data):
         else:
             entropy_options[i] = round(
                 -(number_of_0_p[i] * np.log2(number_of_0_p[i]) + number_of_1_p[i] * np.log2(number_of_1_p[i])), 3)
-    #print("in percent")
-    #print(np.matrix(number_of_0_p))
-    #print(np.matrix(number_of_1_p))
-    #print( "Entropy for each =")
-    #print(np.matrix(entropy_options))
-    #print(" Total values :")
-    #print(np.matrix(number_of_01))
+
+    '''print("in percent")
+    print(np.matrix(number_of_0_p))
+    print(np.matrix(number_of_1_p))
+    print( "Entropy for each =")
+    print(np.matrix(entropy_options))
+    print(" Total values :")
+    print(np.matrix(number_of_01))'''
     entropy_total = 0
     for i in range(len(number_of_op)):
         entropy_total = entropy_total + entropy_options[i] * (number_of_01[i] / len(data))
     entropy_total = round(entropy_total, 3)
-    # print("the X", col_num, "Entropy is :", entropy_total)
-    return entropy_total
+    #print("the X", col_num, "Entropy is :", entropy_total)
+    return parx(col,col_num,entropy_options,entropy_total)
 
-# get the entropy of all possible splits
-def get_entropy_array(data):
+# Generate the entropy of all possible splits and return the lowest
+def get_entropy_array(data , options):
+
+    # אין לי שימוש במערך הזה, וב entropy_array[1][i-1] = nodex.Entropy
+    # אם לא צריך להדפיס את כולם או שיט כזה למחוק.
     entropy_array = [
         ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20' ,'X21','X22','X23',],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
-    for i in range (23):
-        entropy_array[1][i] = get_one_entropy(entropy_array[0][i] , i+1 , data)
-    print(np.matrix(entropy_array))
-
-    min =  entropy_array[1][0]
-    x_min = 'X1'
-    for i in range (23):
-        if(entropy_array[1][i] < min):
-            min = entropy_array[1][i]
-            x_min = entropy_array[0][i]
+        [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
+    min = 2
+    x_min = '%'
+    x_min_num = -2
+    for i in options:
+        nodex = get_one_entropy(entropy_array[0][i-1] , i , data)
+        entropy_array[1][i-1] = nodex.Entropy
+        if (nodex.Entropy < min):
+            nodex2 = copy.deepcopy(nodex)
+            min = nodex.Entropy
+            x_min = nodex.name
+            x_min_num = i
+    print(entropy_array)
     print("The lowest X is :", x_min+',', "his entropy :", min)
+    options.remove(x_min_num)
+    #print(options)
+    return nodex2
 
+# split data for leaf in the tree
+def split_data(data, colX, index):
+    data_new = copy.deepcopy(data)
+    rowtodrop = list()
+    for i in range(len(data_new)):
+            if (int(clients_data[colX].values[i]) != index):
+                #print( int(clients_data['Unnamed: 0'].values[i]), int(clients_data[colX].values[i]))
+                rowtodrop.append(int(clients_data['Unnamed: 0'].values[i]))
+    #print(rowtodrop)
+    data_new = data_new.drop(rowtodrop)
+    return data_new
+
+# Create leafs in the tree from specific Xi
+def make_leafs(data , colX, col_num, Entropy_data, before_name):
+    # clientsdata , 'X6' , 6, [0.4,0.3....]
+    number_of_op = get_option(col_num)
+    k=0
+    for i in number_of_op:
+        data_leaf = split_data(data, colX, i)
+        decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name))
+        k=k+1
+
+# Biuld all the tree
 def build_tree(k):
     # create x_train , y_train
     # print("Validation set & Train set :")
@@ -181,14 +225,25 @@ def build_tree(k):
     # print(y_train)
 
     # split
-    x2_train, x_val, y2_train, y_val = train_test_split(x_train, y_train, test_size=k, random_state=123)
-
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=k, random_state=123)
     # print("val len = ", len(y_val))
     # print("train len = ", len(y_train))
-    get_entropy_array(clients_data)
+
+    # צריך לבדוק על מי בונים את העץ על הXtrain וY ? לא נראלי שיש אופציה אחרת \ כל הדטא..
+    options = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
+    nodex = get_entropy_array(clients_data, options)
+    make_leafs(clients_data , nodex.name, nodex.name_num, nodex.data, "start")
+    for i in decision_Tree:
+        nodex = get_entropy_array(i.data, options)
+        make_leafs(clients_data , nodex.name, nodex.name_num, nodex.data, i.name)
+        break
+    for i in decision_Tree:
+        print(i.name,"=",i.value, i.Entropy, i.samples ,i.before)
+
+
+    #name, value, data, Entropy, samples, before
 
     # createTreeModelSK(x_train, y_train)
-
 
 ###---------------------------- Kfold -----------------------------###
 
