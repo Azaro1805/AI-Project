@@ -36,9 +36,9 @@ class leaf:
         self.before = before
 
 class parx:
-    def __init__(self, name, name_num, data, Entropy):
+    def __init__(self, name, name_num, Entropydata, Entropy):
         self.name = name
-        self.data = data
+        self.Entropydata = Entropydata
         self.Entropy = Entropy
         self.name_num =name_num
 
@@ -96,6 +96,11 @@ number_of_X_op = [0, 4, 3, 4, 4, 4, 11, 11, 11, 11, 10, 10, 4, 4, 4, 4, 4, 4, 4,
 
 # יש בעיה בתוכן יש 2 שורות כותרות יעשה בעיות בהמשך
 
+
+def print_leaf (leaf):
+    print(leaf.name, leaf.value, leaf.Entropy, leaf.samples, leaf.before)
+
+
 # Get all possible options of specific X
 def get_option(col_num):
     if (col_num == 2):
@@ -112,7 +117,7 @@ def get_option(col_num):
         return number_of_op
 
 
-# Get entropy of specific X
+# Get entropy of specific X (מייצרת ParX)
 def get_one_entropy(col, col_num, data):
     # 1 אנטרופיה מלאה - לא יודע שום דבר על המטבע כלומר לא אומר לי כלום לא משפר אותי
     # ככל שאי הודאות יורדת זה יורד כלומר קטן מ-1 ..
@@ -127,11 +132,11 @@ def get_one_entropy(col, col_num, data):
     entropy_options = [0 for i in range(len(number_of_op))]
     number_of_01 = [0 for i in range(len(number_of_op))]
 
-    for i in range(len(data)):
+    for i in data:
         k = 0
         for j in number_of_op:
-            if (int(data[col].values[i]) == j):
-                if (int(data['Y'].values[i]) == 1):
+            if (int(clients_data[col].values[i]) == j):
+                if (int(clients_data['Y'].values[i]) == 1):
                     number_of_1[k] = number_of_1[k] + 1
                 else:
                     number_of_0[k] = number_of_0[k] + 1
@@ -169,7 +174,7 @@ def get_one_entropy(col, col_num, data):
     return parx(col,col_num,entropy_options,entropy_total)
 
 # Generate the entropy of all possible splits and return the lowest
-def get_entropy_array(data , options):
+def get_entropy_array(options, data_rows):
 
     # אין לי שימוש במערך הזה, וב entropy_array[1][i-1] = nodex.Entropy
     # אם לא צריך להדפיס את כולם או שיט כזה למחוק.
@@ -180,7 +185,7 @@ def get_entropy_array(data , options):
     x_min = '%'
     x_min_num = -2
     for i in options:
-        nodex = get_one_entropy(entropy_array[0][i-1] , i , data)
+        nodex = get_one_entropy(entropy_array[0][i-1] , i , data_rows) #parx
         entropy_array[1][i-1] = nodex.Entropy
         if (nodex.Entropy < min):
             nodex2 = copy.deepcopy(nodex)
@@ -193,26 +198,32 @@ def get_entropy_array(data , options):
     #print(options)
     return nodex2
 
+
+# אם אני רוצה להגיע לשורה הנכונה פשוט data_rows=data_new
+# print(clients_data.values[data_new[0]])
+
 # split data for leaf in the tree
-def split_data(data, colX, index):
-    data_new = copy.deepcopy(data)
-    rowtodrop = list()
-    for i in range(len(data_new)):
-            if (int(clients_data[colX].values[i]) != index):
-                #print( int(clients_data['Unnamed: 0'].values[i]), int(clients_data[colX].values[i]))
-                rowtodrop.append(int(clients_data['Unnamed: 0'].values[i]))
-    #print(rowtodrop)
-    data_new = data_new.drop(rowtodrop)
-    return data_new
+def split_data(colX, index, row_data):
+    data_rows = list()
+    for i in row_data:
+        if(i == 30000):
+            break
+        if (int(clients_data[colX].values[i]) == index):
+            #print( int(clients_data['Unnamed: 0'].values[i]), int(clients_data['X3'].values[i]), int(clients_data[colX].values[i]))
+            data_rows.append(i)
+    #print(len(data_rows))
+    return data_rows
+
 
 # Create leafs in the tree from specific Xi
-def make_leafs(data , colX, col_num, Entropy_data, before_name):
+def make_leafs(row_data , colX, col_num, Entropy_data, before_name):
     # clientsdata , 'X6' , 6, [0.4,0.3....]
     number_of_op = get_option(col_num)
     k=0
     for i in number_of_op:
-        data_leaf = split_data(data, colX, i)
-        decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name))
+        data_leaf = split_data(colX, i, row_data)
+        if(len(data_leaf)>0):
+            decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name))
         k=k+1
 
 # Biuld all the tree
@@ -231,14 +242,19 @@ def build_tree(k):
 
     # צריך לבדוק על מי בונים את העץ על הXtrain וY ? לא נראלי שיש אופציה אחרת \ כל הדטא..
     options = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
-    nodex = get_entropy_array(clients_data, options)
-    make_leafs(clients_data , nodex.name, nodex.name_num, nodex.data, "start")
+    data_rows = list()
+    for i in range(len(clients_data)):
+        data_rows.append(i)
+    nodex = get_entropy_array(options, data_rows)
+    make_leafs(data_rows , nodex.name, nodex.name_num, nodex.Entropydata, "start")
     for i in decision_Tree:
-        nodex = get_entropy_array(i.data, options)
-        make_leafs(clients_data , nodex.name, nodex.name_num, nodex.data, i.name)
+        nodex = get_entropy_array(options, data_rows)
+        #print(nodex.name_num)
+        before_name = i.name + "=" + str(i.value)
+        make_leafs(i.data , nodex.name, nodex.name_num, nodex.Entropydata, before_name)
         break
     for i in decision_Tree:
-        print(i.name,"=",i.value, i.Entropy, i.samples ,i.before)
+        print_leaf(i)
 
 
     #name, value, data, Entropy, samples, before
