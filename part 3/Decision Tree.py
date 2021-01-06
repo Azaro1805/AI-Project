@@ -131,6 +131,9 @@ def print_leaf (leaf):
     #print('"'+leaf.name+'"',',','"'+str(leaf.value)+'"',',','"'+leaf.before+'"')
     print(leaf.name,"=",leaf.value,"b=", leaf.before)
 
+def print_leaf (leaf):
+    print(leaf.name, leaf.value, leaf.Entropy, leaf.samples, leaf.before)
+
 
 # Get all possible options of specific X
 def get_option(col_num):
@@ -238,27 +241,46 @@ def get_entropy_array(options, data_rows):
 # print(clients_data.values[data_new[0]])
 
 # split data for leaf in the tree
-def split_data(data, colX, index):
-    data_new = copy.deepcopy(data)
-    rowtodrop = list()
-    for i in range(len(data_new)):
-            if (int(clients_data[colX].values[i]) != index):
-                #print( int(clients_data['Unnamed: 0'].values[i]), int(clients_data[colX].values[i]))
-                rowtodrop.append(int(clients_data['Unnamed: 0'].values[i]))
-    #print(rowtodrop)
-    data_new = data_new.drop(rowtodrop)
-    return data_new
+def split_data(colX, index, row_data):
+    data_rows = list()
+    for i in row_data:
+        if(i == 30000):
+            break
+        if (int(clients_data[colX].values[i]) == index):
+            #print( int(clients_data['Unnamed: 0'].values[i]), int(clients_data['X3'].values[i]), int(clients_data[colX].values[i]))
+            data_rows.append(i)
+    #print(len(data_rows))
+    return data_rows
 
-# Create leafs in the tree from specific Xi
-def make_leafs(data , colX, col_num, Entropy_data, before_name):
+def make_leafs_first(row_data , colX, col_num, Entropy_data, before_name, options):
+    # clientsdata , 'X6' , 6, [0.4,0.3....]
+    number_of_op = get_option(col_num)
+    k = 0
+    for i in number_of_op:
+        data_leaf = split_data(colX, i, row_data)
+        if (len(data_leaf) > 0):
+            optionsleaf = copy.deepcopy(options)
+            decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name, optionsleaf))
+        k = k + 1
+
+# Create leafs in the tree fFrom specific Xi
+def make_leafs(row_data , colX, col_num, Entropy_data, before_name , current_leaf ,pathleaf , options):
     # clientsdata , 'X6' , 6, [0.4,0.3....]
     number_of_op = get_option(col_num)
     k=0
     t=0
     #print("make leaf  ,", colX,"b=" ,before_name)
     for i in number_of_op:
-        data_leaf = split_data(data, colX, i)
-        decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name))
+        data_leaf = split_data(colX, i, row_data)
+        if(len(data_leaf)>0):
+            optionsleaf = copy.deepcopy(options)
+            decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name ,optionsleaf))
+            #print(colX,"=",i)
+            if(t!=0): # אם זה לא העלה הראשון תוסיף למאגר שצריך לבדוק
+                pathleaf.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name, optionsleaf))
+            if(t==0): # כדאי שאוכל להחזיר את העלה הראשון
+                current_leaf = leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name , optionsleaf)
+            t=t+1
         k=k+1
     return current_leaf
 
@@ -278,20 +300,78 @@ def build_tree(k):
 
     # צריך לבדוק על מי בונים את העץ על הXtrain וY ? לא נראלי שיש אופציה אחרת \ כל הדטא..
     options = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
-    nodex = get_entropy_array(clients_data, options)
-    make_leafs(clients_data , nodex.name, nodex.name_num, nodex.data, "start")
+    data_rows = list()
+    for i in range(len(clients_data)):
+        data_rows.append(i)
+    nodex = get_entropy_array(options, data_rows)
+    make_leafs_first(data_rows , nodex.name, nodex.name_num, nodex.Entropydata, "start" , options)
+    pathleaf= list()
+    k=0
     for i in decision_Tree:
-        nodex = get_entropy_array(i.data, options)
-        make_leafs(clients_data , nodex.name, nodex.name_num, nodex.data, i.name)
-        break
-    for i in decision_Tree:
-        print(i.name,"=",i.value, i.Entropy, i.samples ,i.before)
+        options_leaf = copy.deepcopy(options)
+        pathleaf.clear()
+        print("i.name:", i.name+ "=" + str(i.value))
+        finish_path = False
+        #pathleaf.append(i)
+        current_leaf = i
+        before_name = ""
+        if(k==1):
+            break
+        k=k+1
+        while(finish_path == False):
+            if (current_leaf.Entropy == 0):
+                #print("entropy = 0 ", current_leaf.name,"=", current_leaf.value,"his e= ",current_leaf.Entropy)
+                if(len(pathleaf)==0):
+                    break
+                #current_leaf = make_leafs(current_leaf.data, nodex.name, nodex.name_num, nodex.Entropydata, before_name , current_leaf , pathleaf,options_leaf)
+                current_leaf = pathleaf[-1]
+                pathleaf.remove(pathleaf[-1])
+                options_leaf = copy.deepcopy(current_leaf.options)
+            else:
+                nodex = get_entropy_array(options_leaf, current_leaf.data)
+                if (nodex == 2):
+                    while(True):
+                        if (len(pathleaf) == 0):
+                            break
+                        current_leaf = pathleaf[-1]
+                        pathleaf.remove(pathleaf[-1])
+                        options_leaf = copy.deepcopy(current_leaf.options)
+                        nodex = get_entropy_array(options_leaf, current_leaf.data)
+                        #print("inside while")
+                        #print(current_leaf.name ," = ",current_leaf.value ,current_leaf.options)
+                        #print(nodex)
+                        if(nodex != 2):
+                            break
+                #print(current_leaf.name, " = ", current_leaf.value, current_leaf.options)
+                before_name = before_name + " -> " + current_leaf.name + "=" + str(current_leaf.value)
+                current_leaf = make_leafs(current_leaf.data, nodex.name, nodex.name_num, nodex.Entropydata, before_name , current_leaf , pathleaf,options_leaf)
+                #print_list(pathleaf)
+                #print(current_leaf.name , "=" , current_leaf.value ,", ", current_leaf.before)
+
+    '''for i in decision_Tree:
+        nodex = get_entropy_array(options, data_rows)
+        if(nodex==2):
+            break
+        #print(nodex.name_num)
+        if (i.Entropy != 0):
+            before_name = i.name + "=" + str(i.value)
+            make_leafs(i.data , nodex.name, nodex.name_num, nodex.Entropydata, before_name)'''
 
     for i in range(30):
         print_leaf(decision_Tree[i])
 
 
     #print_tree()
+
+    for i in decision_Tree:
+        nodex = get_entropy_array(options, data_rows)
+        #print(nodex.name_num)
+        before_name = i.name + "=" + str(i.value)
+        make_leafs(i.data , nodex.name, nodex.name_num, nodex.Entropydata, before_name)
+        break
+    for i in decision_Tree:
+        print_leaf(i)
+
 
     #name, value, data, Entropy, samples, before
 
