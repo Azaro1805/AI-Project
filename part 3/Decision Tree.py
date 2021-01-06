@@ -27,13 +27,14 @@ from sklearn.ensemble import RandomForestClassifier
 
 np.random.seed(356)
 class leaf:
-    def __init__(self, name, value, data, Entropy, samples, before):
+    def __init__(self, name, value, data, Entropy, samples, before, options):
         self.name = name
         self.value = value
         self.data = data
         self.Entropy = Entropy
         self.samples = samples
         self.before = before
+        self.options = options
 
 class parx:
     def __init__(self, name, name_num, Entropydata, Entropy):
@@ -96,9 +97,39 @@ number_of_X_op = [0, 4, 3, 4, 4, 4, 11, 11, 11, 11, 10, 10, 4, 4, 4, 4, 4, 4, 4,
 
 # יש בעיה בתוכן יש 2 שורות כותרות יעשה בעיות בהמשך
 
+def print_list(list1):
+    st=""
+    for i in list1:
+        st=st+i.name+"="+str(i.value)+" , "
+    print(st)
+
+def print_tree():
+    for j in decision_Tree:
+        str1 = j.name + "=" + str(j.value)
+        #print(str1)
+        before = j.before
+        flag = True
+        while(flag):
+            for i in decision_Tree:
+                name = i.name + "=" + str(i.value)
+                if(before == "start"):
+                    flag = False
+                    break
+                #print(name , before)
+                if(name == before):
+                    str1 = str1 + " -> " + i.name + "=" + str(i.value)
+                    #str1 = str1 + " " + i.name + "=" + i.value
+                    #print(str1)
+                    #str1 = i.name + "=" + i.value
+                    before = i.before
+        print(str1)
+
+
 
 def print_leaf (leaf):
-    print(leaf.name, leaf.value, leaf.Entropy, leaf.samples, leaf.before)
+    #print(leaf.name,"=",leaf.value,"e=", leaf.Entropy,"sa=", leaf.samples,"b=", leaf.before)
+    #print('"'+leaf.name+'"',',','"'+str(leaf.value)+'"',',','"'+leaf.before+'"')
+    print(leaf.name,"=",leaf.value,"b=", leaf.before)
 
 
 # Get all possible options of specific X
@@ -182,7 +213,7 @@ def get_entropy_array(options, data_rows):
         ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8', 'X9', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15', 'X16', 'X17', 'X18', 'X19', 'X20' ,'X21','X22','X23',],
         [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
     min = 2
-    x_min = '%'
+    x_min = 'A'
     x_min_num = -2
     for i in options:
         nodex = get_one_entropy(entropy_array[0][i-1] , i , data_rows) #parx
@@ -192,8 +223,12 @@ def get_entropy_array(options, data_rows):
             min = nodex.Entropy
             x_min = nodex.name
             x_min_num = i
-    print(entropy_array)
-    print("The lowest X is :", x_min+',', "his entropy :", min)
+    #print(entropy_array)
+    '''if(x_min=="X12"):
+        print(nodex2.name , nodex2.Entropy , nodex2.Entropydata)'''
+    #print("The lowest X is :", x_min+',', "his entropy :", min)
+    if(min==2):
+        return 2
     options.remove(x_min_num)
     #print(options)
     return nodex2
@@ -203,28 +238,29 @@ def get_entropy_array(options, data_rows):
 # print(clients_data.values[data_new[0]])
 
 # split data for leaf in the tree
-def split_data(colX, index, row_data):
-    data_rows = list()
-    for i in row_data:
-        if(i == 30000):
-            break
-        if (int(clients_data[colX].values[i]) == index):
-            #print( int(clients_data['Unnamed: 0'].values[i]), int(clients_data['X3'].values[i]), int(clients_data[colX].values[i]))
-            data_rows.append(i)
-    #print(len(data_rows))
-    return data_rows
-
+def split_data(data, colX, index):
+    data_new = copy.deepcopy(data)
+    rowtodrop = list()
+    for i in range(len(data_new)):
+            if (int(clients_data[colX].values[i]) != index):
+                #print( int(clients_data['Unnamed: 0'].values[i]), int(clients_data[colX].values[i]))
+                rowtodrop.append(int(clients_data['Unnamed: 0'].values[i]))
+    #print(rowtodrop)
+    data_new = data_new.drop(rowtodrop)
+    return data_new
 
 # Create leafs in the tree from specific Xi
-def make_leafs(row_data , colX, col_num, Entropy_data, before_name):
+def make_leafs(data , colX, col_num, Entropy_data, before_name):
     # clientsdata , 'X6' , 6, [0.4,0.3....]
     number_of_op = get_option(col_num)
     k=0
+    t=0
+    #print("make leaf  ,", colX,"b=" ,before_name)
     for i in number_of_op:
-        data_leaf = split_data(colX, i, row_data)
-        if(len(data_leaf)>0):
-            decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name))
+        data_leaf = split_data(data, colX, i)
+        decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name))
         k=k+1
+    return current_leaf
 
 # Biuld all the tree
 def build_tree(k):
@@ -242,20 +278,20 @@ def build_tree(k):
 
     # צריך לבדוק על מי בונים את העץ על הXtrain וY ? לא נראלי שיש אופציה אחרת \ כל הדטא..
     options = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
-    data_rows = list()
-    for i in range(len(clients_data)):
-        data_rows.append(i)
-    nodex = get_entropy_array(options, data_rows)
-    make_leafs(data_rows , nodex.name, nodex.name_num, nodex.Entropydata, "start")
+    nodex = get_entropy_array(clients_data, options)
+    make_leafs(clients_data , nodex.name, nodex.name_num, nodex.data, "start")
     for i in decision_Tree:
-        nodex = get_entropy_array(options, data_rows)
-        #print(nodex.name_num)
-        before_name = i.name + "=" + str(i.value)
-        make_leafs(i.data , nodex.name, nodex.name_num, nodex.Entropydata, before_name)
+        nodex = get_entropy_array(i.data, options)
+        make_leafs(clients_data , nodex.name, nodex.name_num, nodex.data, i.name)
         break
     for i in decision_Tree:
-        print_leaf(i)
+        print(i.name,"=",i.value, i.Entropy, i.samples ,i.before)
 
+    for i in range(30):
+        print_leaf(decision_Tree[i])
+
+
+    #print_tree()
 
     #name, value, data, Entropy, samples, before
 
