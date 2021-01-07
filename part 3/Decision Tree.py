@@ -35,6 +35,7 @@ class leaf:
         self.samples = samples
         self.before = before
         self.options = options
+        self.next = ""
 
 class parx:
     def __init__(self, name, name_num, Entropydata, Entropy):
@@ -60,6 +61,7 @@ def change_DB_buckets(col, number_of_splits, bucketSize, startpoint):
 clients_data = pd.read_csv("DefaultOfCreditCardClients.csv")
 clients_data = clients_data.drop(0)  # מוריד שורה ראשונה
 decision_Tree = list()
+last_leafs = list()
 # print(clients_data)
 
 ###-------------------- Edit paramters in data-set --------------------------###
@@ -249,6 +251,7 @@ def split_data(colX, index, row_data):
         if (int(clients_data[colX].values[i]) == index):
             #print( int(clients_data['Unnamed: 0'].values[i]), int(clients_data['X3'].values[i]), int(clients_data[colX].values[i]))
             data_rows.append(i)
+
     #print(len(data_rows))
     return data_rows
 
@@ -283,6 +286,52 @@ def make_leafs(row_data , colX, col_num, Entropy_data, before_name , current_lea
             t=t+1
         k=k+1
     return current_leaf
+
+def change_next(leaf_other):
+    for leaf in decision_Tree:
+        if(leaf.before == leaf_other.before and leaf.name == leaf_other.name and leaf.value == leaf_other.value):
+            leaf.next = "last leaf"
+
+def find_last_leafs():
+    for leaf in decision_Tree:
+        if(leaf.next == "last leaf"):
+            leafi = copy.deepcopy(leaf)
+            last_leafs.append(leafi)
+    print("last_leafs len :",len(last_leafs))
+    '''for leaf in last_leafs:
+        print(leaf.name , leaf.value , leaf.next)'''
+
+def get_other_leaf (path):
+    for leaf in decision_Tree:
+        if (path == leaf.before):
+            print("ok")
+
+def check_meaning_leaf (meaningful, leaf_to_check):
+    #print(leaf_i.name , leaf_i.data)
+    for leaf_i in last_leafs:
+        full_name = leaf_i.name + "=" + str(leaf_i.value)
+        counter0 = 0
+        counter1 = 0
+        for row in leaf_i.data:
+            if (clients_data['Y'].values[row] == "0"):
+                counter0 += 1
+            if (clients_data['Y'].values[row] == "1"):
+                counter1 += 1
+        print(counter0,counter1)
+        if((counter0 == 0) or (counter1 == 0)):
+            meaningful.append(leaf_i.before+" -> "+full_name)
+        else:
+            leaf_to_check.append(leaf_i.before+" -> "+full_name)
+
+    print(meaningful)
+    print(leaf_to_check)
+    print(len(meaningful))
+    print(len(leaf_to_check))
+
+
+#print(meaningful)
+
+
 
 # Biuld all the tree
 def build_tree(k):
@@ -320,13 +369,19 @@ def build_tree(k):
         k=k+1
         while(finish_path == False):
             if (current_leaf.Entropy == 0):
+                change_next(current_leaf)
+                #print(current_leaf.name,current_leaf.next)
                 #print("entropy = 0 ", current_leaf.name,"=", current_leaf.value,"his e= ",current_leaf.Entropy)
                 if(len(pathleaf)==0):
                     break
                 #current_leaf = make_leafs(current_leaf.data, nodex.name, nodex.name_num, nodex.Entropydata, before_name , current_leaf , pathleaf,options_leaf)
                 current_leaf = pathleaf[-1]
                 pathleaf.remove(pathleaf[-1])
+                if(len(current_leaf.options)== 0):
+                    change_next(current_leaf)
                 options_leaf = copy.deepcopy(current_leaf.options)
+                before_name = current_leaf.before
+
             else:
                 nodex = get_entropy_array(options_leaf, current_leaf.data)
                 if (nodex == 2):
@@ -335,8 +390,11 @@ def build_tree(k):
                             break
                         current_leaf = pathleaf[-1]
                         pathleaf.remove(pathleaf[-1])
+                        if (len(current_leaf.options) == 0):
+                            change_next(current_leaf)
                         options_leaf = copy.deepcopy(current_leaf.options)
                         nodex = get_entropy_array(options_leaf, current_leaf.data)
+                        before_name = current_leaf.before
                         #print("inside while")
                         #print(current_leaf.name ," = ",current_leaf.value ,current_leaf.options)
                         #print(nodex)
@@ -345,6 +403,7 @@ def build_tree(k):
                 #print(current_leaf.name, " = ", current_leaf.value, current_leaf.options)
                 before_name = before_name + " -> " + current_leaf.name + "=" + str(current_leaf.value)
                 current_leaf = make_leafs(current_leaf.data, nodex.name, nodex.name_num, nodex.Entropydata, before_name , current_leaf , pathleaf,options_leaf)
+
                 #print_list(pathleaf)
                 #print(current_leaf.name , "=" , current_leaf.value ,", ", current_leaf.before)
 
@@ -352,8 +411,11 @@ def build_tree(k):
 
     for i in range(30):
         print_leaf(decision_Tree[i])
-
-
+    print("dt length = ",len(decision_Tree))
+    meaningful = list()
+    leaf_to_check = list()
+    find_last_leafs()
+    check_meaning_leaf(meaningful, leaf_to_check)
     #print_tree()
 
 
