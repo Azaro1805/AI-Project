@@ -226,7 +226,7 @@ def get_entropy_array(options, data_rows):
             min = nodex.Entropy
             x_min = nodex.name
             x_min_num = i
-    #print(entropy_array)
+    #print(np.matrix(entropy_array))
     '''if(x_min=="X12"):
         print(nodex2.name , nodex2.Entropy , nodex2.Entropydata)'''
     #print("The lowest X is :", x_min+',', "his entropy :", min)
@@ -348,14 +348,7 @@ def build_tree(k):
                 #print_list(pathleaf)
                 #print(current_leaf.name , "=" , current_leaf.value ,", ", current_leaf.before)
 
-    '''for i in decision_Tree:
-        nodex = get_entropy_array(options, data_rows)
-        if(nodex==2):
-            break
-        #print(nodex.name_num)
-        if (i.Entropy != 0):
-            before_name = i.name + "=" + str(i.value)
-            make_leafs(i.data , nodex.name, nodex.name_num, nodex.Entropydata, before_name)'''
+
 
     for i in range(30):
         print_leaf(decision_Tree[i])
@@ -363,14 +356,6 @@ def build_tree(k):
 
     #print_tree()
 
-    for i in decision_Tree:
-        nodex = get_entropy_array(options, data_rows)
-        #print(nodex.name_num)
-        before_name = i.name + "=" + str(i.value)
-        make_leafs(i.data , nodex.name, nodex.name_num, nodex.Entropydata, before_name)
-        break
-    for i in decision_Tree:
-        print_leaf(i)
 
 
     #name, value, data, Entropy, samples, before
