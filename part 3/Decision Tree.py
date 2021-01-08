@@ -1,5 +1,5 @@
 import copy
-
+from scipy.stats import chisquare, chi2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -21,6 +21,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+from sympy.stats.drv_types import scipy
 from tqdm import tqdm
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
@@ -44,6 +45,12 @@ class parx:
         self.Entropy = Entropy
         self.name_num =name_num
 
+class branch:
+    def __init__(self, name, value, leafs):
+        self.name = name
+        self.value = value
+        self.leafs = leafs
+
 
 def change_DB_buckets(col, number_of_splits, bucketSize, startpoint):
     for i in range(len(clients_data)):
@@ -62,15 +69,24 @@ clients_data = pd.read_csv("DefaultOfCreditCardClients.csv")
 clients_data = clients_data.drop(0)  # מוריד שורה ראשונה
 decision_Tree = list()
 last_leafs = list()
+branches = list()
 # print(clients_data)
 
-###-------------------- Edit paramters in data-set --------------------------###
-
+###-------------------- Eding parameters in data-base change into buckets --------------------------###
+print("Editing parameters in data-base change into buckets")
 # LIMIT_BAL
 change_DB_buckets('X1', 4, 247500, 10000)
 
 # age
 change_DB_buckets('X5', 4, 15, 21)
+
+# PAY_0-6
+change_DB_buckets('X6', 4, 2, -2)
+change_DB_buckets('X7', 4, 2, -2)
+change_DB_buckets('X8', 4, 2, -2)
+change_DB_buckets('X9', 4, 2, -2)
+change_DB_buckets('X10', 4, 2, -2)
+change_DB_buckets('X11', 4, 2, -2)
 
 # BILL_AMT 1-6
 change_DB_buckets('X12', 4, 282523, -165580)
@@ -91,14 +107,22 @@ change_DB_buckets('X23', 4, 132167, 0)
 # data of number of options in each Xi
 
 # first 0 is for X0 = null
-number_of_X_op = [0, 4, 3, 4, 4, 4, 11, 11, 11, 11, 10, 10, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
-
-# print(clients_data)
+##number_of_X_op = [["x1"]0, 4, 2, 4, 4, 4, 11, 11, 11, 11, 10, 10, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
 
 ###---------------------------- Validation set & Train set & Tree -----לערוך כותרות------------------------###
 
 # יש בעיה בתוכן יש 2 שורות כותרות יעשה בעיות בהמשך
 
+def split_all_data(k, clients_data2):
+    length = 30000*(1-k)
+    #print(length)
+    for i in range(int(length)):
+        clients_data2.append(i)
+    #print(clients_data2)
+    #print(len(clients_data2))
+
+
+# print leaf in list
 def print_list(list1):
     st=""
     for i in list1:
@@ -127,26 +151,30 @@ def print_tree():
         print(str1)
 
 
-
+'''
 def print_leaf (leaf):
     #print(leaf.name,"=",leaf.value,"e=", leaf.Entropy,"sa=", leaf.samples,"b=", leaf.before)
     #print('"'+leaf.name+'"',',','"'+str(leaf.value)+'"',',','"'+leaf.before+'"')
-    print(leaf.name,"=",leaf.value,"b=", leaf.before)
+
+    #last:
+    #print(leaf.name,"=",leaf.value,"b=", leaf.before)
+
+    print(leaf.before[5:]+" -> "+leaf.name)
+
+'''
+
+def sort_by_len(path):
+    return len(path.before)
 
 def print_leaf (leaf):
-    print(leaf.name, leaf.value, leaf.Entropy, leaf.samples, leaf.before)
+    #print(leaf.name, leaf.value, leaf.Entropy, leaf.samples, leaf.before)
+    print(leaf.before[4:]+" -> "+leaf.name+"=", leaf.value)
 
 
 # Get all possible options of specific X
 def get_option(col_num):
     if (col_num == 2):
         number_of_op = [1, 2]
-        return number_of_op
-    if (col_num == 6 or col_num == 7 or col_num == 8 or col_num == 9):
-        number_of_op = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8]
-        return number_of_op
-    if(col_num == 10 or col_num == 11):
-        number_of_op = [-2, -1, 0, 2, 3, 4, 5, 6, 7, 8]
         return number_of_op
     else:
         number_of_op = [0, 1, 2, 3]
@@ -292,81 +320,174 @@ def change_next(leaf_other):
         if(leaf.before == leaf_other.before and leaf.name == leaf_other.name and leaf.value == leaf_other.value):
             leaf.next = "last leaf"
 
-def find_last_leafs():
+def find_last_leafs(Xstart):
     for leaf in decision_Tree:
-        if(leaf.next == "last leaf"):
+        # leaf.before[4:7]וגם איקסטארט שווב ל
+        if(leaf.next == "last leaf" and ):
+
             leafi = copy.deepcopy(leaf)
             last_leafs.append(leafi)
+            #print_leaf(leafi)
+
     print("last_leafs len :",len(last_leafs))
     '''for leaf in last_leafs:
         print(leaf.name , leaf.value , leaf.next)'''
 
-def get_other_leaf (path):
+def leaf_allready_inside ( list1,leaf_to_check):
+    for leaf in list1:
+        if(leaf.before == leaf_to_check.before and leaf.name == leaf_to_check.name and leaf.value == leaf_to_check.value):
+            return True
+    return False
+
+def get_longest():
+    max = len(last_leafs[0].before)
+    longest_leaf = 0
+    for i in range(len(last_leafs)):
+        if (max < len(last_leafs[i].before)):
+            max = len(last_leafs[i].before)
+            longest_leaf = i
+    return longest_leaf
+
+def get_number_of_splits(xname):
+    xnum = xname.split("X")
+    return len(get_option(int(xnum[1])))
+
+
+def cut_leaf(leaf_cut):
+    before = ""
     for leaf in decision_Tree:
-        if (path == leaf.before):
-            print("ok")
+        if(leaf_cut.before == leaf.before):
+            #print(leaf.before)
+            before = leaf.before[:-9]
+            decision_Tree.remove(leaf)
+            #print("remove decision_Tree")
+            #print(leaf in decision_Tree)
+    #print("123 before", before)
+    for leaf in decision_Tree:
+        #print(leaf.before)
+        if (leaf.before == before):
+            leaf.next = "last leaf"
+            if(leaf_allready_inside(last_leafs,leaf) == False):
+                last_leafs.append(copy.deepcopy(leaf))
+                #print("add")
+    for leaf in last_leafs:
+        if (leaf_cut.before == leaf.before):
+            last_leafs.remove(leaf)
+            #print("remove last_leafs")
+            #print(leaf in last_leafs)
 
-def check_meaning_leaf (meaningful, leaf_to_check):
+def check_meaning_leaf ():
     #print(leaf_i.name , leaf_i.data)
-    for leaf_i in last_leafs:
-        full_name = leaf_i.name + "=" + str(leaf_i.value)
-        counter0 = 0
-        counter1 = 0
-        for row in leaf_i.data:
-            if (clients_data['Y'].values[row] == "0"):
-                counter0 += 1
-            if (clients_data['Y'].values[row] == "1"):
-                counter1 += 1
-        print(counter0,counter1)
-        if((counter0 == 0) or (counter1 == 0)):
-            meaningful.append(leaf_i.before+" -> "+full_name)
+    couter=0
+    for i in range(len(last_leafs)):
+        couter += 1
+        index=get_longest()
+        longest_leaf = last_leafs[index]
+        print(" longest name :", longest_leaf.name,longest_leaf.value, "before = ", longest_leaf.before)
+        # lastNode = longest_leaf.before.split(" -> ")
+        # print(lastNode[-1])
+        need_to_cut=chi_test(longest_leaf)
+        if(need_to_cut):
+            #print("cut")
+            cut_leaf(longest_leaf)
         else:
-            leaf_to_check.append(leaf_i.before+" -> "+full_name)
+            print("find one on , finish (need to check")
+            print("number of small branches = ", len(last_leafs))
+            # צריך לסדר כי לא בטוח יהיה X6 ולא בטוח ערך 0 !
+            #last_leafs.sort(key=sort_by_len)
+            branches.append(branch(last_leafs[-1].before[4:7], last_leafs[-1].before[7:9], copy.deepcopy(last_leafs)))
+            print("name = ", branches[0].name, "value =", branches[0].value)
+            last_leafs.clear()
+            # צריך לטפל בערך אם שלישי מ8:10 אם חיובי מ8:9 ..כרגע אם חיובי יש רווח.. אפשר פשוט אם אזה יחיובי בשאלה אז להוסיף רווח
+            break
+    print("the branch is:")
+    for leaf in last_leafs:
+        print_leaf(leaf)
 
-    print(meaningful)
-    print(leaf_to_check)
-    print(len(meaningful))
-    print(len(leaf_to_check))
+# check pruning chi^2 test
+def chi_test(longest_leaf):
+    list_last_paths = list()
+    for leaf in decision_Tree:
+        if (longest_leaf.before in leaf.before):
+            list_last_paths.append(copy.deepcopy(leaf))
+            #print(leaf.name, "=", leaf.value, " | s= ", leaf.samples, " | b=", leaf.before, )
+    pn = [[0 for j in range(4)] for i in range(len(list_last_paths))]
+    delta = [0 for i in range(len(list_last_paths))]
+    totalcounter0 = 0
+    totalcounter1 = 0
+    for i in range(len(list_last_paths)):
+        pn[i][0] = 0
+        pn[i][1] = 0
+        for row in list_last_paths[i].data:
+            if (clients_data['Y'].values[row] == "0"):
+                pn[i][0] += 1  # counter0 = pk
+            if (clients_data['Y'].values[row] == "1"):
+                pn[i][1] += 1  # counter1 =nk
+        totalcounter0 += pn[i][0]  # totalcounter0 = p
+        totalcounter1 += pn[i][1]  # totalcounter1 = n
+    #print(totalcounter0, totalcounter1)
+    #print(np.matrix(pn))
 
+    statisti = 0
+    for i in range(len(list_last_paths)):
+        pn[i][2] = round((totalcounter0 * (pn[i][0] + pn[i][1])) / (totalcounter0 + totalcounter1),3)  # p*(pk+pn)/(p+n) = p^
+        pn[i][3] = round((totalcounter1 * (pn[i][0] + pn[i][1])) / (totalcounter0 + totalcounter1),3)  # n*(pk+pn)/(p+n) = n^
+        if(pn[i][3] == 0):
+            delta[i] = round(delta[i] + ( ((pow((pn[i][0] - pn[i][2]), 2)) / pn[i][2])),5)  # delta
+        if (pn[i][2] == 0):
+            delta[i] = round(delta[i] + (((pow((pn[i][1] - pn[i][3]), 2)) / pn[i][3])),5)  # delta
+        if(pn[i][2] != 0 and pn[i][3] != 0):
+            delta[i] = delta[i] + (((pow((pn[i][0] - pn[i][2]), 2)) / pn[i][2]) + ((pow((pn[i][1] - pn[i][3]), 2)) / pn[i][3]))  # delta
+        statisti += delta[i]
+    #print(np.matrix(pn))
+    #print(pn[0][0])
+    #print(np.matrix(delta))
 
-#print(meaningful)
-
+    dgree_of_free = get_number_of_splits(longest_leaf.name)
+    criti = chi2.ppf(0.95, dgree_of_free)
+    print("statisti= ", statisti ,"criti = ",criti , "s<c = remove")
+    if (statisti < criti):
+        return True
+    else:
+        return False
 
 
 # Biuld all the tree
 def build_tree(k):
+    print("Start Building the Tree")
     # create x_train , y_train
     # print("Validation set & Train set :")
-    x_train = clients_data.drop(['Y'], axis=1).values
+    #x_train = clients_data.drop(['Y'], axis=1).values
     # print(x_train)
-    y_train = clients_data['Y'].values
+    #y_train = clients_data['Y'].values
     # print(y_train)
 
     # split
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=k, random_state=123)
+    #x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=k, random_state=123)
     # print("val len = ", len(y_val))
     # print("train len = ", len(y_train))
-
+    clients_data2 = list()
+    split_all_data(k,clients_data2)
     # צריך לבדוק על מי בונים את העץ על הXtrain וY ? לא נראלי שיש אופציה אחרת \ כל הדטא..
     options = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
     data_rows = list()
-    for i in range(len(clients_data)):
+    for i in clients_data2:
         data_rows.append(i)
     nodex = get_entropy_array(options, data_rows)
     make_leafs_first(data_rows , nodex.name, nodex.name_num, nodex.Entropydata, "start" , options)
     pathleaf= list()
     k=0
-    for i in decision_Tree:
+    #print(len(get_option(decision_Tree[1].name[1:2])))
+    t=0
+    for i in range(len(get_option(decision_Tree[1].name[1:2]))):
+        print("the branch is :", decision_Tree[i].name, "=", decision_Tree[i].value)
         options_leaf = copy.deepcopy(options)
         pathleaf.clear()
-        print("i.name:", i.name+ "=" + str(i.value))
         finish_path = False
         #pathleaf.append(i)
-        current_leaf = i
+        current_leaf = decision_Tree[i]
         before_name = ""
-        if(k==1):
-            break
-        k=k+1
+
         while(finish_path == False):
             if (current_leaf.Entropy == 0):
                 change_next(current_leaf)
@@ -409,13 +530,10 @@ def build_tree(k):
 
 
 
-    for i in range(30):
-        print_leaf(decision_Tree[i])
-    print("dt length = ",len(decision_Tree))
-    meaningful = list()
-    leaf_to_check = list()
-    find_last_leafs()
-    check_meaning_leaf(meaningful, leaf_to_check)
+
+        find_last_leafs()
+        check_meaning_leaf()
+
     #print_tree()
 
 
@@ -468,5 +586,5 @@ def createTreeModelSK(x_train, y_train):
 
 # main
 
-build_tree(0.2)
+build_tree(0.8)
 # tree_error()
