@@ -370,9 +370,10 @@ def find_last_leafs(branch_name):
 
 
 def leaf_allready_inside(list1, leaf_to_check):
+    if(len(list1)==0):
+        return False
     for leaf in list1:
-        if (
-                leaf.before == leaf_to_check.before and leaf.name == leaf_to_check.name and leaf.value == leaf_to_check.value):
+        if (leaf.before == leaf_to_check.before and leaf.name == leaf_to_check.name and leaf.value == leaf_to_check.value):
             return True
     return False
 
@@ -415,36 +416,97 @@ def cut_leaf(leaf_cut):
             # print("remove last_leafs")
             # print(leaf in last_leafs)
 
+def leaf_allready_inside2(list1, leaf_to_check):
+    if(len(list1)==0):
+        return False
+    #print("start check inside good list")
+    for leaf in list1:
+        #print(leaf_to_check.before ,"|", leaf.before ,"|", leaf_to_check.before in leaf.before)
+        if (leaf_to_check.before in leaf.before):
+            return True
+    return False
+
+def leaf_allready_inside3(list1, leaf_to_check):
+    if(len(list1)==0):
+        return False
+    #print("start check inside good list")
+    for leaf in list1:
+        #print(leaf_to_check.before ,"|", leaf.before ,"|", leaf_to_check.before in leaf.before)
+        full_b = leaf_to_check.before+" -> "+leaf_to_check.name+"="+str(leaf_to_check.value)
+        #print(full_b)
+        if (full_b in leaf.before):
+            return True
+    return False
 
 def check_meaning_leaf():
     # print(leaf_i.name , leaf_i.data)
+    good_path = list()
     couter = 0
-    for i in range(len(last_leafs)):
-        couter += 1
-        index = get_longest()
-        longest_leaf = last_leafs[index]
-        # print(" longest name :", longest_leaf.name,longest_leaf.value, "before = ", longest_leaf.before)
-        # lastNode = longest_leaf.before.split(" -> ")
-        # print(lastNode[-1])
-        need_to_cut = chi_test(longest_leaf)
-        if (need_to_cut):
-            # print("cut")
-            cut_leaf(longest_leaf)
-        else:
-            # print("find one on , finish (need to check")
-            # print("number of small branches = ", len(last_leafs))
-            # צריך לסדר כי לא בטוח יהיה X6 ולא בטוח ערך 0 !
-            # last_leafs.sort(key=sort_by_len)
-            branchfullname = get_full_branch_name(last_leafs[-1])
-            branches.append(branch(branchfullname[0:2], branchfullname[3:], copy.deepcopy(last_leafs)))
-            # print("name = ", branches[0].name, "value =", branches[0].value)
+    flag = True
+
+    while(flag):
+        counter = 0
+        for i in range(len(last_leafs)):
+            if(len(last_leafs)==0):
+                break
+            couter += 1
+            index = get_longest()
+            longest_leaf = last_leafs[index]
+            if(leaf_allready_inside2(good_path, longest_leaf) == False):
+                # print(" longest name :", longest_leaf.name,longest_leaf.value, "before = ", longest_leaf.before)
+                # lastNode = longest_leaf.before.split(" -> ")
+                # print(lastNode[-1])
+                need_to_cut = chi_test(longest_leaf)
+                if (need_to_cut):
+                    #print("cut")
+                    cut_leaf(longest_leaf)
+                else:
+                    good_path.append(copy.deepcopy(longest_leaf))
+                    for leaf1 in last_leafs:
+                        if (longest_leaf.before == leaf1.before):
+                            last_leafs.remove(leaf1)
+                    counter += 1
+                    break
+            else:
+                good_path.append(copy.deepcopy(longest_leaf))
+                for leaf1 in last_leafs:
+                    if (longest_leaf.before == leaf1.before):
+                        last_leafs.remove(leaf1)
+                counter += 1
+                break
+        if(counter == 0):
+            #print("endddddddddddddddddddd")
+            flag = False
             break
-    print("The splits in the branch are:")
+
+                            # print("remove last_leafs")
+                            # print(leaf in last_leafs)
+                    #print("good_path = ", good_path[-1].before)
+                    # print("find one on , finish (need to check")
+                    # print("number of small branches = ", len(last_leafs))
+                    # צריך לסדר כי לא בטוח יהיה X6 ולא בטוח ערך 0 !
+                    # last_leafs.sort(key=sort_by_len)
+                    # print("name = ", branches[0].name, "value =", branches[0].value)
+    #print("finish")
+    for leaf in good_path:
+        if (leaf_allready_inside3(last_leafs, leaf) == False):
+            last_leafs.append(copy.deepcopy(leaf))
+    #print("good path , finish")
+    '''for i in good_path:
+        print(i.before)
+    print(len(last_leafs))'''
     if (len(last_leafs) == 0):
-        print("No more splits in this branch")
+        print("The branch is been deleted")
+    else:
+        branchfullname = get_full_branch_name(last_leafs[0])
+        #print("branchfullname", branchfullname)
+        branches.append(branch(branchfullname[0:2], branchfullname[3:], copy.deepcopy(last_leafs)))
+        print("The splits in the branch are:")
+
     for leaf in last_leafs:
         print_leaf(leaf)
     last_leafs.clear()
+    good_path.clear()
 
 # check pruning chi^2 test
 def chi_test(longest_leaf):
@@ -490,7 +552,7 @@ def chi_test(longest_leaf):
 
     dgree_of_free = get_number_of_splits(longest_leaf.name)
     criti = chi2.ppf(0.95, dgree_of_free)
-    # print("statisti= ", statisti ,"criti = ",criti , "s<c = remove")
+    #print("statisti= ", statisti ,"criti = ",criti , "s<c = remove")
     if (statisti < criti):
         return True
     else:
@@ -830,7 +892,7 @@ def tree_error(k):
 '''
 # main
 
-build_tree(0.6)
+build_tree(0.7)
 '''
 list12 = ["20000", "2", "2", "1", "24", "1", "2", "-1", "3", "0", "-2", "3913", "3102", "689", "0", "0", "0",
                 "0", "689", "0", "0", "0", "0"]  # y ="1" , X6=1
