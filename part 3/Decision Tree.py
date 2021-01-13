@@ -84,6 +84,9 @@ last_leafs = list()
 branches = list()
 root = list()
 data_list_test = list()
+data_list_test2 = list()
+
+#insidetree = list()
 # print(clients_data)
 
 ###-------------------- Eding parameters in data-base change into buckets --------------------------###
@@ -138,13 +141,13 @@ def get_full_branch_name(leaf):
     return fname
 
 
-def split_all_data(k, clients_data2, clients_data3):
+def split_all_data(k, test, clients_data2):
     length = 30000 * (1 - k)
     # print(length)
     for i in range(int(length)):
-        clients_data2.append(i)
+        test.append(i)
     for i in range(int(length),30000):
-        clients_data3.append(i)
+        clients_data2.append(i)
     # print(clients_data2)
     # print(len(clients_data2))
 
@@ -570,6 +573,10 @@ def get_list_from_client(row):
 
 # Build all the tree
 def build_tree(k):
+    decision_Tree.clear()
+    data_list_test.clear()
+    last_leafs.clear()
+    branches.clear()
     print("Start Building the Tree")
     # create x_train , y_train
     # print("Validation set & Train set :")
@@ -584,6 +591,7 @@ def build_tree(k):
     # print("train len = ", len(y_train))
     clients_data2 = list()
     split_all_data(k,data_list_test, clients_data2)
+    #print(data_list_test)
     options = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     #data_rows = list()
     #for i in clients_data2:
@@ -594,7 +602,7 @@ def build_tree(k):
     make_leafs_first(clients_data2, nodex.name, nodex.name_num, nodex.Entropydata, "start", options)
     #print("df len = ", len(decision_Tree))
     pathleaf = list()
-    k = 0
+    #k = 0
     # print(len(get_option(decision_Tree[1].name[1:2])))
     t = 0
     for i in range(len(decision_Tree)):
@@ -659,11 +667,35 @@ def build_tree(k):
 
     # createTreeModelSK(x_train, y_train)
     #print(data_list_test)
-    print("Calculate the quality of the decision tree with 8 k folds :")
-    tree_error(8)
-    #for row in data_list_test:
-    #    def_to_check = get_list_from_client(row)
-    #    will_default(def_to_check)
+    if(k != 1):
+        print("Calculate the quality of the decision tree:")
+        #data_list_test
+        errors = 0
+        good_pred = 0
+        for row in data_list_test:
+            #print(row)
+            real_val = clients_data['Y'].values[row]
+            def_to_check = get_list_from_client(row)
+            pred_val = str(will_default2(def_to_check))
+            #print(pred_val,real_val,pred_val == real_val)
+            if(pred_val == real_val):
+                good_pred += 1
+            else:
+                errors += 1
+        #print(good_pred,errors)
+        #print(good_pred/(good_pred+errors))
+        if (good_pred == 0):
+            print("The Tree acc is :", 0)
+            print("The Tree error is :", 1)
+            return 0
+        result = round((good_pred / (good_pred + errors)), 3)
+        print("The Tree acc is :", result)
+        print("The Tree error is :", round((errors / (good_pred + errors)), 3))
+        return round((errors / (good_pred + errors)), 3)
+        #for row in data_list_test:
+        #    def_to_check = get_list_from_client(row)
+        #    will_default(def_to_check)
+
 
 
 
@@ -772,7 +804,7 @@ def get_value_from_branch(before , branch):
             return leaf.name
     return "none"
 
-def will_default(list):
+def will_default2(list):
     if (str_or_int(list)):
         #print("Enter will_default")
         change_parm(list)
@@ -810,99 +842,219 @@ def will_default(list):
         return 1
     else : # list of ints
         list_temp = convert_list_int_to_str(list)
-        return will_default(list_temp)
+        return will_default2(list_temp)
+
+def will_default(list):
+    build_tree(1)
+    if (str_or_int(list)):
+        #print("Enter will_default")
+        change_parm(list)
+        rootname = root[-1]
+        rootXnum = rootname[-1]
+        #print("rootXnum=", rootXnum)
+        X_branch_value = list[int(rootXnum)-1]
+        #print("branch_value = " , X_branch_value)
+        for branch in branches:
+            if(branch.value == X_branch_value):
+                #print("find the branch", branch.name , "=" , branch.value)
+                before = " -> "+branch.name+"="+str(branch.value)
+                #print("before start =", before)
+                for i in range(23):
+                    next_X = get_value_from_branch(before, branch)
+                    if(next_X != "none"):
+                        before += " -> " + next_X + "=" + list[int(next_X[1:])-1]
+                        #print("before B =", before)
+                    else:
+                        #print("last before = ", before)
+                        X_arr = before.split(" -> ")
+                        before = ""
+                        for i in X_arr[1:len(X_arr)-1]:
+                            before += " -> "+i
+                        #print("last before cut last = ", before)
+                        #Yval = get_branch_value(before,before+" -> "+X_arr[len(X_arr)-2], branch , X_arr[len(X_arr)-2])
+                        Yval = get_branch_value(before,before, branch , X_arr[len(X_arr)-1])
+                        #print(leaf.name,"=" ,leaf.value)
+                        return Yval
+
+        # no branch
+        rand_num = random()
+        if(rand_num>0.5):
+            return 0
+        return 1
+    else : # list of ints
+        list_temp = convert_list_int_to_str(list)
+        return will_default2(list_temp)
 
 
 
 ###---------------------------- Error - Kfold -----------------------------###
 
-# K fold splitting
-def KFoldList(data_list, k, k_data_list):
-  lengthk = int(len(data_list) / k)
-  last = len(data_list) - lengthk * (k - 1)
-  temp_list = list()
-  t = 1
-  for listi in range (k-1):
-    for i in range(((t - 1) * lengthk), (t * lengthk)):
-      temp_list.append(i)
-    k_data_list.append(copy.deepcopy(temp_list))
-    temp_list.clear()
-    t=t+1
-  for i in range(((t - 1) * lengthk), ((t - 1) * lengthk) + last ):
-    temp_list.append(i)
-  k_data_list.append(copy.deepcopy(temp_list))
+def split_all_data2(k, test, clients_data2, num):
+    length = 30000 * (1 - k)
+    # print(length)
+    for i in range(29999):
+        if(i<(length*num) and i>length*(num-1)):
+            #print(i)
+            test.append(i)
+        else:
+            clients_data2.append(i)
 
+    # print(clients_data2)
+    # print(len(clients_data2))
+# Build all the tree
+def build_tree2(k , num):
+    decision_Tree.clear()
+    branches.clear()
+    last_leafs.clear()
+    data_list_test.clear()
+
+    print("Start Building the Tree")
+    # create x_train , y_train
+    # print("Validation set & Train set :")
+    # x_train = clients_data.drop(['Y'], axis=1).values
+    # print(x_train)
+    # y_train = clients_data['Y'].values
+    # print(y_train)
+
+    # split
+    # x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=k, random_state=123)
+    # print("val len = ", len(y_val))
+    # print("train len = ", len(y_train))
+    clients_data22 = list()
+    #print(k)
+    split_all_data2(k, data_list_test2, clients_data22 , num)
+    #print(data_list_test2)
+    options = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+    # data_rows = list()
+    # for i in clients_data2:
+    # data_rows.append(i)
+    nodex = get_entropy_array(options, clients_data22)
+    print("The root of the tree is :", nodex.name)
+    root.append(nodex.name)
+    make_leafs_first(clients_data22, nodex.name, nodex.name_num, nodex.Entropydata, "start", options)
+    # print("df len = ", len(decision_Tree))
+    pathleaf = list()
+    k = 0
+    # print(len(get_option(decision_Tree[1].name[1:2])))
+    t = 0
+    for i in range(len(decision_Tree)):
+        print("The branch is :", decision_Tree[i].name, "=", decision_Tree[i].value)
+        options_leaf = copy.deepcopy(options)
+        pathleaf.clear()
+        finish_path = False
+        # pathleaf.append(i)
+        current_leaf = decision_Tree[i]
+        before_name = ""
+
+        while (finish_path == False):
+            if (current_leaf.Entropy == 0):
+                change_next(current_leaf)
+                # print(current_leaf.name,current_leaf.next)
+                # print("entropy = 0 ", current_leaf.name,"=", current_leaf.value,"his e= ",current_leaf.Entropy)
+                if (len(pathleaf) == 0):
+                    break
+                # current_leaf = make_leafs(current_leaf.data, nodex.name, nodex.name_num, nodex.Entropydata, before_name , current_leaf , pathleaf,options_leaf)
+                current_leaf = pathleaf[-1]
+                pathleaf.remove(pathleaf[-1])
+                if (len(current_leaf.options) == 0):
+                    change_next(current_leaf)
+                options_leaf = copy.deepcopy(current_leaf.options)
+                before_name = current_leaf.before
+
+            else:
+                nodex = get_entropy_array(options_leaf, current_leaf.data)
+                if (nodex == 2):
+                    while (True):
+                        if (len(pathleaf) == 0):
+                            break
+                        current_leaf = pathleaf[-1]
+                        pathleaf.remove(pathleaf[-1])
+                        if (len(current_leaf.options) == 0):
+                            change_next(current_leaf)
+                        options_leaf = copy.deepcopy(current_leaf.options)
+                        nodex = get_entropy_array(options_leaf, current_leaf.data)
+                        before_name = current_leaf.before
+                        # print("inside while")
+                        # print(current_leaf.name ," = ",current_leaf.value ,current_leaf.options)
+                        # print(nodex)
+                        if (nodex != 2):
+                            break
+                # print(current_leaf.name, " = ", current_leaf.value, current_leaf.options)
+                # print(nodex)
+                if (nodex == 2):
+                    break
+                before_name = before_name + " -> " + current_leaf.name + "=" + str(current_leaf.value)
+                current_leaf = make_leafs(current_leaf.data, nodex.name, nodex.name_num, nodex.Entropydata, before_name,
+                                          current_leaf, pathleaf, options_leaf)
+
+                # print_list(pathleaf)
+                # print(current_leaf.name , "=" , current_leaf.value ,", ", current_leaf.before)
+
+        find_last_leafs(decision_Tree[i].name + "=" + str(decision_Tree[i].value))
+        check_meaning_leaf()
+
+    # print_tree()
+
+    # name, value, data, Entropy, samples, before
+
+    # createTreeModelSK(x_train, y_train)
+    # print(data_list_test)
+    print("Calculate the quality of the decision tree:")
+    # data_list_test
+    errors = 0
+    good_pred = 0
+    for row in data_list_test2:
+        real_val = clients_data['Y'].values[row]
+        def_to_check = get_list_from_client(row)
+        pred_val = str(will_default2(def_to_check))
+        # print(pred_val,real_val,pred_val == real_val)
+        if (pred_val == real_val):
+            good_pred += 1
+        else:
+            errors += 1
+    #print(good_pred,errors)
+    if(good_pred == 0 ):
+        print("The Tree acc is :", 0)
+        print("The Tree error is :", 1)
+        return 0
+    result = round((good_pred / (good_pred + errors)), 3)
+    print("The Tree acc is :", result)
+    print("The Tree error is :", round((errors / (good_pred + errors)), 3))
+    return result
+
+    # for row in data_list_test:
+    #    def_to_check = get_list_from_client(row)
+    #    will_default(def_to_check)
 
 
 # need to be function with only K
 def tree_error(k):
-    print("Start calculate the quality of the decision tree:")
+    print("Start tree_error:")
     #kfold = KFold(n_splits=k, shuffle=True, random_state=123)
-    k_data_list = list()
-    KFoldList(data_list_test ,k ,k_data_list)
-    #print("sets")
-    #print(k_data_list)
-    Total_results = list()
-    k_num = 1
-    for listi in k_data_list:
-        errors = 0
-        good_pred = 0
-        for row in listi:
-            real_val = clients_data['Y'].values[row]
-            def_to_check = get_list_from_client(row)
-            pred_val = str(will_default(def_to_check))
-            #print(pred_val,real_val,pred_val == real_val)
-            if(pred_val == real_val):
-                good_pred += 1
-            else:
-                errors += 1
-        result = list()
-        result.append(good_pred)
-        result.append(errors)
-        result.append(round( (good_pred/(good_pred+errors)), 3))
-        #print("finish")
-        #print(result)
-        Total_results.append(copy.deepcopy(result))
-        result.clear()
-        print("The fold number" , k_num , "the acc is:" , round( (good_pred/(good_pred+errors)), 3))
-        k_num += 1
-    total_acc = 0;
-    for foldk_list in Total_results:
-        total_acc+=foldk_list[2]
-    #print((Total_results))
-    print("The Tree acc is :", round((total_acc/k),3))
-
-'''
-    DT_res = pd.DataFrame()
-    for train_idx, val_idx in kfold.split(x_train):
-        modelDT = DecisionTreeClassifier(criterion='entropy', random_state=123)
-        modelDT.fit(x_train[train_idx], y_train[train_idx])
-        accTrain = accuracy_score(y_true=y_train[train_idx], y_pred=modelDT.predict(x_train[train_idx]))
-        accVal = accuracy_score(y_train[val_idx], modelDT.predict(x_train[val_idx]))
-        DT_res = DT_res.append({'accVal': accVal, 'accTrain': accTrain}, ignore_index=True)
-
-    print("Max Depth Tree Performances:")
-    print(round(DT_res, 3))
-    print(round(DT_res.mean(), 3))
-
-    preds_DT = modelDT.predict(x_val)
-    print("Max Depth Tree- Validation accuracy: ", round(accuracy_score(y_val, preds_DT), 3))
+    results = list()
+    for i in range(k):
+        print()
+        print("Tree number:" , i+1)
+        results.append(build_tree2(((k-1)/k) , i+1))
+    total_result = 0
+    for acc in results:
+        total_result += acc
     print()
+    print("All the tree produce")
+    print("The average accuracy is :" , round ((total_result/k), 3))
+    print("The average error is :" , round(((k-total_result)/k), 3))
 
-'''
+
 # main
 
-build_tree(0.7)
-'''
-list12 = ["20000", "2", "2", "1", "24", "1", "2", "-1", "3", "0", "-2", "3913", "3102", "689", "0", "0", "0",
-                "0", "689", "0", "0", "0", "0"]  # y ="1" , X6=1
-list123 = [20000,2,2,1,24,1,2,-1,3,0,-2,3913,3102,689,0,0,0,0,689,0,0,0,0,1]
-list1234 =[20000,2,2,1,24,2,2,-1,-1,-2,-2,3913,3102,689,0,0,0,0,689,0,0,0,0,1]
-ans = will_default(list12)
-print("y = " , ans)
-ans2 = will_default(list123)
-print("y = " , ans2)
-ans2 = will_default(list1234)
-print("y = " , ans2)
-# tree_error()
-'''
+#tree error check
+#tree_error()
+
+#build tree check
+#build_tree(1)
+
+# how i check will defulat
+list1234 = ["20000","1","2","1","32","0","0","0","2","0","0","16354","17776","21158","20511","20316","20474","1700","4000","0","800","1000","800"]
+ans = will_default(list1234)
+print(ans)
+
