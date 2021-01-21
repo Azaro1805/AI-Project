@@ -1,32 +1,8 @@
 import copy
 from random import random
-
 from scipy.stats import chisquare, chi2
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from matplotlib import ticker
-from scipy.stats import chi2_contingency
-from statsmodels.graphics.mosaicplot import mosaic
-from scipy.stats import multivariate_normal
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.tree import plot_tree
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import KFold
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix
-from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
-from sympy.stats.drv_types import scipy
-from tqdm import tqdm
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
 
 np.random.seed(356)
 
@@ -58,6 +34,25 @@ class branch:
         self.leafs = leafs
 
 
+###---------------------------- Initialization-----------------------------###
+
+clients_data = pd.read_csv("DefaultOfCreditCardClients.csv")
+clients_data = clients_data.drop(0)
+decision_Tree = list()
+last_leafs = list()
+branches = list()
+root = list()
+data_list_test = list()
+data_list_test2 = list()
+
+###-------------------- Eding parameters in data-base change into buckets --------------------------###
+print()
+print("Editing parameters in data-base, change into buckets")
+print()
+
+###---------------------------- Data into buckets-----------------------------###
+
+# Change data in order to get into buckets - when the data in data frame
 def change_DB_buckets(col, number_of_splits, bucketSize, startpoint):
     for i in range(len(clients_data)):
         for j in range(number_of_splits):
@@ -66,35 +61,18 @@ def change_DB_buckets(col, number_of_splits, bucketSize, startpoint):
                 clients_data[col].values[i] = j
                 break
 
+# Change data in order to get into buckets after first time
 def change_DB_buckets2(col, number_of_splits, bucketSize, startpoint , list_to_change):
     for j in range(number_of_splits):
         if (int(list_to_change[col-1]) <= ((j + 1) * bucketSize) + startpoint):
             # print(clients_data[col].values[i], ((j + 1) * bucketSize) + startpoint , j)
             list_to_change[col-1] = str(j)
             break
-###-------------------Create the data frame-------------------------------###
 
-# remove AI part 3 before submit - i remove !
-
-
-clients_data = pd.read_csv("DefaultOfCreditCardClients.csv")
-clients_data = clients_data.drop(0)  # מוריד שורה ראשונה
-decision_Tree = list()
-last_leafs = list()
-branches = list()
-root = list()
-data_list_test = list()
-data_list_test2 = list()
-
-#insidetree = list()
-# print(clients_data)
-
-###-------------------- Eding parameters in data-base change into buckets --------------------------###
-print("Editing parameters in data-base, change into buckets")
 # LIMIT_BAL
 change_DB_buckets('X1', 4, 247500, 10000)
 
-# age
+# Age
 change_DB_buckets('X5', 4, 15, 21)
 
 # PAY_0-6
@@ -121,17 +99,9 @@ change_DB_buckets('X21', 4, 155250, 0)
 change_DB_buckets('X22', 4, 106633, 0)
 change_DB_buckets('X23', 4, 132167, 0)
 
+###---------------------------- Generate Tree -----------------------------###
 
-# data of number of options in each Xi
-
-# first 0 is for X0 = null
-##number_of_X_op = [["x1"]0, 4, 2, 4, 4, 4, 11, 11, 11, 11, 10, 10, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
-
-###---------------------------- Validation set & Train set & Tree -----לערוך כותרות------------------------###
-
-# יש בעיה בתוכן יש 2 שורות כותרות יעשה בעיות בהמשך
-
-# get branch name from leaf
+# Get branch name from leaf
 def get_full_branch_name(leaf):
     fname = leaf.before[4:9]
     # print(fname)
@@ -140,26 +110,25 @@ def get_full_branch_name(leaf):
         fname = fname[0:4]
     return fname
 
-
-def split_all_data(k, test, clients_data2):
-    length = 30000 * (1 - k)
+# split all data to 2 set - train and test
+def split_all_data(k, test, clients_data2 , clients_data):
+    length = len(clients_data) * (1 - k)
     # print(length)
     for i in range(int(length)):
         test.append(i)
-    for i in range(int(length),30000):
+    for i in range(int(length),len(clients_data)):
         clients_data2.append(i)
     # print(clients_data2)
     # print(len(clients_data2))
 
-
-# print leaf in list
+# Print leaf in list
 def print_list(list1):
     st = ""
     for i in list1:
         st = st + i.name + "=" + str(i.value) + " , "
     print(st)
 
-
+# Print the tree leafs
 def print_tree():
     for j in decision_Tree:
         str1 = j.name + "=" + str(j.value)
@@ -181,28 +150,14 @@ def print_tree():
                     before = i.before
         print(str1)
 
-
-'''
-def print_leaf (leaf):
-    #print(leaf.name,"=",leaf.value,"e=", leaf.Entropy,"sa=", leaf.samples,"b=", leaf.before)
-    #print('"'+leaf.name+'"',',','"'+str(leaf.value)+'"',',','"'+leaf.before+'"')
-
-    #last:
-    #print(leaf.name,"=",leaf.value,"b=", leaf.before)
-
-    print(leaf.before[5:]+" -> "+leaf.name)
-
-'''
-
-
+# Sort list the path length
 def sort_by_len(path):
     return len(path.before)
 
-
+# Print leaf and his path
 def print_leaf(leaf):
     # print(leaf.name, leaf.value, leaf.Entropy, leaf.samples, leaf.before)
     print(leaf.before[4:] + " -> " + leaf.name + "=" + str(leaf.value))
-
 
 # Get all possible options of specific X
 def get_option(col_num):
@@ -212,7 +167,6 @@ def get_option(col_num):
     else:
         number_of_op = [0, 1, 2, 3]
         return number_of_op
-
 
 # Get entropy of specific X (מייצרת ParX)
 def get_one_entropy(col, col_num, data):
@@ -270,7 +224,6 @@ def get_one_entropy(col, col_num, data):
     # print("the X", col_num, "Entropy is :", entropy_total)
     return parx(col, col_num, entropy_options, entropy_total)
 
-
 # Generate the entropy of all possible splits and return the lowest
 def get_entropy_array(options, data_rows):
     # אין לי שימוש במערך הזה, וב entropy_array[1][i-1] = nodex.Entropy
@@ -300,11 +253,7 @@ def get_entropy_array(options, data_rows):
     # print(options)
     return nodex2
 
-
-# אם אני רוצה להגיע לשורה הנכונה פשוט data_rows=data_new
-# print(clients_data.values[data_new[0]])
-
-# split data for leaf in the tree
+# Split data for leaf in the tree
 def split_data(colX, index, row_data):
     data_rows = list()
     for i in row_data:
@@ -317,7 +266,7 @@ def split_data(colX, index, row_data):
     # print(len(data_rows))
     return data_rows
 
-
+# Make the first leaf of the tree
 def make_leafs_first(row_data, colX, col_num, Entropy_data, before_name, options):
     # clientsdata , 'X6' , 6, [0.4,0.3....]
     number_of_op = get_option(col_num)
@@ -328,7 +277,6 @@ def make_leafs_first(row_data, colX, col_num, Entropy_data, before_name, options
             optionsleaf = copy.deepcopy(options)
             decision_Tree.append(leaf(colX, i, data_leaf, Entropy_data[k], len(data_leaf), before_name, optionsleaf))
         k = k + 1
-
 
 # Create leafs in the tree fFrom specific Xi
 def make_leafs(row_data, colX, col_num, Entropy_data, before_name, current_leaf, pathleaf, options):
@@ -351,13 +299,13 @@ def make_leafs(row_data, colX, col_num, Entropy_data, before_name, current_leaf,
         k = k + 1
     return current_leaf
 
-
+# Change next value of leaf
 def change_next(leaf_other):
     for leaf in decision_Tree:
         if (leaf.before == leaf_other.before and leaf.name == leaf_other.name and leaf.value == leaf_other.value):
             leaf.next = "last leaf"
 
-
+# Get the last leaf from the branch
 def find_last_leafs(branch_name):
     for leaf in decision_Tree:
         bname = get_full_branch_name(leaf)
@@ -371,7 +319,7 @@ def find_last_leafs(branch_name):
     '''for leaf in last_leafs:
         print(leaf.name , leaf.value , leaf.next)'''
 
-
+# Check if the leaf is inside the list by before and value
 def leaf_allready_inside(list1, leaf_to_check):
     if(len(list1)==0):
         return False
@@ -380,7 +328,7 @@ def leaf_allready_inside(list1, leaf_to_check):
             return True
     return False
 
-
+# Get the longest path of leaf from list
 def get_longest():
     max = len(last_leafs[0].before)
     longest_leaf = 0
@@ -390,12 +338,12 @@ def get_longest():
             longest_leaf = i
     return longest_leaf
 
-
+# Get the number of options of Xi
 def get_number_of_splits(xname):
     xnum = xname.split("X")
     return len(get_option(int(xnum[1])))
 
-
+# Cut leaf from list and tree
 def cut_leaf(leaf_cut):
     before = ""
     for leaf in decision_Tree:
@@ -419,6 +367,7 @@ def cut_leaf(leaf_cut):
             # print("remove last_leafs")
             # print(leaf in last_leafs)
 
+# Check if leaf is inside list only before
 def leaf_allready_inside2(list1, leaf_to_check):
     if(len(list1)==0):
         return False
@@ -429,6 +378,7 @@ def leaf_allready_inside2(list1, leaf_to_check):
             return True
     return False
 
+# Check if leaf is inside list by before & name
 def leaf_allready_inside3(list1, leaf_to_check):
     if(len(list1)==0):
         return False
@@ -441,6 +391,7 @@ def leaf_allready_inside3(list1, leaf_to_check):
             return True
     return False
 
+# Generate branches
 def check_meaning_leaf():
     # print(leaf_i.name , leaf_i.data)
     good_path = list()
@@ -511,7 +462,7 @@ def check_meaning_leaf():
     last_leafs.clear()
     good_path.clear()
 
-# check pruning chi^2 test
+# Check pruning chi^2 test
 def chi_test(longest_leaf):
     list_last_paths = list()
     for leaf in decision_Tree:
@@ -561,7 +512,7 @@ def chi_test(longest_leaf):
     else:
         return False
 
-#create list in order to use will_default
+# Create list in order to use will_default
 def get_list_from_client(row):
     temp1 = list()
     #st = ""
@@ -590,7 +541,7 @@ def build_tree(k):
     # print("val len = ", len(y_val))
     # print("train len = ", len(y_train))
     clients_data2 = list()
-    split_all_data(k,data_list_test, clients_data2)
+    split_all_data(k,data_list_test, clients_data2 ,clients_data)
     #print(data_list_test)
     options = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     #data_rows = list()
@@ -696,12 +647,9 @@ def build_tree(k):
         #    def_to_check = get_list_from_client(row)
         #    will_default(def_to_check)
 
-
-
-
-
 ###---------------------------- will_default-----------------------------###
 
+# Change values to the buckets value
 def change_parm(list):
     change_DB_buckets2(1, 4, 247500, 10000, list)
     change_DB_buckets2(5, 4, 15, 21, list)
@@ -725,6 +673,7 @@ def change_parm(list):
     change_DB_buckets2(23, 4, 132167, 0, list)
     #print(list)
 
+# Convert list of int to list of string
 def convert_list_int_to_str(list1):
     string_ints = [str(int) for int in list1]
     str_of_ints = ",".join(string_ints)
@@ -735,13 +684,14 @@ def convert_list_int_to_str(list1):
     #print(list_temp)
     return list_temp
 
+# Check if list contain objects of int or string
 def str_or_int(list1):
     if ((str(type(list1[0])) == "<class 'str'>")):
         return True
     if ((str(type(list1[0])) == "<class 'int'>")):
         return False
 
-# get the most common y option of this branch
+# Get the most common y option of this branch
 def get_Y(leaf, bool):
     if(bool): # its leaf
         number0 = 0
@@ -785,7 +735,7 @@ def get_Y(leaf, bool):
         else:
             return 1
 
-# get the leaf in the last
+# Get the leaf in the last
 def get_branch_value(before , before2 ,branch , name ):
     for leaf in branch.leafs:
         #print(leaf.before,"|",before,"|",leaf.before == before ,"|",leaf.name+"="+str(leaf.value),"|", name,"|", leaf.name+"="+str(leaf.value) == name)
@@ -797,13 +747,14 @@ def get_branch_value(before , before2 ,branch , name ):
             list_x.append(copy.deepcopy(leaf))
     return get_Y(list_x, False)
 
-# get next split in the tree
+# Get next split in the tree
 def get_value_from_branch(before , branch):
     for leaf in branch.leafs:
         if(leaf.before == before):
             return leaf.name
     return "none"
 
+# Will default on current tree
 def will_default2(list):
     if (str_or_int(list)):
         #print("Enter will_default")
@@ -844,9 +795,12 @@ def will_default2(list):
         list_temp = convert_list_int_to_str(list)
         return will_default2(list_temp)
 
+# will default for full tree
 def will_default(list):
-    build_tree(1)
     if (str_or_int(list)):
+        build_tree(1)
+        print("Finish building the tree")
+        print()
         #print("Enter will_default")
         change_parm(list)
         rootname = root[-1]
@@ -883,16 +837,15 @@ def will_default(list):
         return 1
     else : # list of ints
         list_temp = convert_list_int_to_str(list)
-        return will_default2(list_temp)
-
-
+        return will_default(list_temp)
 
 ###---------------------------- Error - Kfold -----------------------------###
 
-def split_all_data2(k, test, clients_data2, num):
-    length = 30000 * (1 - k)
+#split all the data for k split
+def split_all_data2(k, test, clients_data2, num ,clients_data):
+    length = len(clients_data) * (1 - k)
     # print(length)
-    for i in range(29999):
+    for i in range(len(clients_data)):
         if(i<(length*num) and i>length*(num-1)):
             #print(i)
             test.append(i)
@@ -901,6 +854,7 @@ def split_all_data2(k, test, clients_data2, num):
 
     # print(clients_data2)
     # print(len(clients_data2))
+
 # Build all the tree
 def build_tree2(k , num):
     decision_Tree.clear()
@@ -922,7 +876,7 @@ def build_tree2(k , num):
     # print("train len = ", len(y_train))
     clients_data22 = list()
     #print(k)
-    split_all_data2(k, data_list_test2, clients_data22 , num)
+    split_all_data2(k, data_list_test2, clients_data22 , num ,clients_data)
     #print(data_list_test2)
     options = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     # data_rows = list()
@@ -1026,7 +980,6 @@ def build_tree2(k , num):
     #    def_to_check = get_list_from_client(row)
     #    will_default(def_to_check)
 
-
 # need to be function with only K
 def tree_error(k):
     print("Start tree_error:")
@@ -1044,17 +997,21 @@ def tree_error(k):
     print("The average accuracy is :" , round ((total_result/k), 3))
     print("The average error is :" , round(((k-total_result)/k), 3))
 
-
-# main
+###---------------------------- Tests -----------------------------###
 
 #tree error check
-#tree_error()
+tree_error(3)
 
-#build tree check
-#build_tree(1)
+#build tree check :
+#build_tree(0.3)
 
-# how i check will defulat
-list1234 = ["20000","1","2","1","32","0","0","0","2","0","0","16354","17776","21158","20511","20316","20474","1700","4000","0","800","1000","800"]
-ans = will_default(list1234)
-print(ans)
+# how i check will defulat :
+# list of str
+#list1234 = ["20000","1","2","1","32","0","0","0","2","0","0","16354","17776","21158","20511","20316","20474","1700","4000","0","800","1000","800"]
+#ans = will_default(list1234)
+# or list of int
+#list12345 = [20000,1,2,1,32,0,0,0,2,0,0,16354,17776,21158,20511,20316,20474,1700,4000,0,800,1000,800]
+#ans = will_default(list12345)
+
+#print("the predict is : ",  ans)
 
