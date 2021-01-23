@@ -186,3 +186,18 @@ k_data_list = list()
 data_list= [1,2,3,4,5,6,7,8,9,10]
 KFoldList(data_list,3,k_data_list)
 print(k_data_list)'''
+
+def split_all_data2(k, test, clients_data2, num):
+    length = 300 * (1 - k)
+    # print(length)
+    for i in range(299):
+        if(i<length*num and i> length*(num-1)):
+            test.append(i)
+        else:
+            clients_data2.append(i)
+
+test= list()
+clients_data2 = list()
+split_all_data2(0.9 , test, clients_data2 , 1)
+print(test)
+print(clients_data2)
